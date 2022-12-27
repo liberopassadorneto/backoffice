@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model active_campaign {
+  id                            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  domain                        String
+  first_installed               Boolean   @default(false)
+  first_bot_created             Boolean   @default(false)
+  open_channel_first_configured Boolean   @default(false)
+  finished_installation         Boolean   @default(false)
+  created_at                    DateTime? @db.Timestamp(0)
+  updated_at                    DateTime? @db.Timestamp(0)
+}
+
+model api_response_variables {
+  id                BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  card_id           BigInt    @db.UnsignedBigInt
+  chat_variable     String
+  api_response_path String
+  version           Int       @default(1)
+  created_at        DateTime? @db.Timestamp(0)
+  updated_at        DateTime? @db.Timestamp(0)
+  card              card      @relation(fields: [card_id], references: [id], onDelete: Cascade, map: "api_response_variables_card_id_foreign")
+
+  @@index([card_id], map: "api_response_variables_card_id_foreign")
+}
+
+model billing {
+  id             String    @id @default(uuid())
+  domain         String
+  amount_of_days Int
+  created_at     DateTime  @default(now())
+  updated_at     DateTime?
+}
+
+model cache {
+  key        String @unique(map: "cache_key_unique")
+  value      String @db.MediumText
+  expiration Int
+}
+
+model card {
+  id                        BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  parent_id                 BigInt?                   @db.UnsignedBigInt
+  chatbot_id                BigInt                    @db.UnsignedBigInt
+  card_type_id              BigInt                    @db.UnsignedBigInt
+  text                      String                    @db.Text
+  text_with_variables       String?                   @db.Text
+  capture_field             String?                   @db.Text
+  custom_message            String?                   @db.Text
+  menu_return               Boolean?                  @default(false)
+  start_return              Boolean?                  @default(false)
+  chat_variable_field       String?                   @db.VarChar(100)
+  enumeration_id            Int?
+  lead_status               String?
+  transfer_to               String?
+  start_date                DateTime?                 @db.Timestamp(0)
+  end_date                  DateTime?                 @db.Timestamp(0)
+  conditions                String?                   @db.Text
+  conditions_with_variables String?                   @db.Text
+  keywords                  String?                   @db.Text
+  header_read_from_api      String?                   @db.Text
+  method_read_from_api      String?                   @db.Text
+  body_read_from_api        String?                   @db.Text
+  version                   Int                       @default(1)
+  created_at                DateTime?                 @db.Timestamp(0)
+  updated_at                DateTime?                 @db.Timestamp(0)
+  api_response_variables    api_response_variables[]
+  card_type                 card_type                 @relation(fields: [card_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "card_card_type_id_foreign")
+  chatbot                   chatbot                   @relation(fields: [chatbot_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "card_chatbot_id_foreign")
+  card                      card?                     @relation("cardTocard", fields: [parent_id], references: [id], onUpdate: NoAction, map: "card_parent_id_foreign")
+  other_card                card[]                    @relation("cardTocard")
+  create_entity_variables   create_entity_variables[]
+
+  @@index([card_type_id], map: "card_card_type_id_foreign")
+  @@index([chatbot_id], map: "card_chatbot_id_foreign")
+  @@index([parent_id], map: "card_parent_id_foreign")
+}
+
+model card_type {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name       String
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+  card       card[]
+}
+
+model chatbot {
+  id               BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  color            String?
+  icon             String?         @db.Text
+  user_id          BigInt          @db.UnsignedBigInt
+  chatbot_id       Int
+  description      String?         @db.Text
+  version          Int             @default(1)
+  receptive_only   Boolean         @default(false)
+  ignore_reactions Boolean         @default(false)
+  receptive_time   Int             @default(30)
+  send_to          chatbot_send_to @default(queue)
+  created_at       DateTime?       @db.Timestamp(0)
+  updated_at       DateTime?       @db.Timestamp(0)
+  card             card[]
+  users            users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "chatbot_user_id_foreign")
+
+  @@index([user_id], map: "chatbot_user_id_foreign")
+}
+
+model client {
+  id                BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  access_token      String
+  expires           String
+  expires_in        String
+  scope             String      @db.Text
+  domain            String      @unique(map: "client_domain_unique")
+  server_endpoint   String
+  status            String
+  client_endpoint   String
+  member_id         String
+  user_id           Int
+  refresh_token     String
+  application_token String
+  is_installed      Boolean     @default(false)
+  created_at        DateTime?   @db.Timestamp(0)
+  updated_at        DateTime?   @db.Timestamp(0)
+  roles             roles[]
+  step_form         step_form[]
+  user_data         user_data[]
+  users             users[]
+}
+
+model create_entity_variables {
+  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  card_id       BigInt    @db.UnsignedBigInt
+  entity        String
+  deal_pipeline Int?
+  status        Int?
+  field_type    String?
+  field_value   String?
+  created_at    DateTime? @db.Timestamp(0)
+  updated_at    DateTime? @db.Timestamp(0)
+  card          card      @relation(fields: [card_id], references: [id], onDelete: Cascade, map: "create_entity_variables_card_id_foreign")
+
+  @@index([card_id], map: "create_entity_variables_card_id_foreign")
+}
+
+model migrations {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  migration String
+  batch     Int
+}
+
+model password_resets {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  email      String
+  token      String
+  created_at DateTime? @db.Timestamp(0)
+
+  @@index([email], map: "password_resets_email_index")
+}
+
+model permissions {
+  id                BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  name              String
+  created_at        DateTime?           @db.Timestamp(0)
+  updated_at        DateTime?           @db.Timestamp(0)
+  roles_permissions roles_permissions[]
+}
+
+model roles {
+  id                BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  name              String
+  client_id         BigInt              @db.UnsignedBigInt
+  created_at        DateTime?           @db.Timestamp(0)
+  updated_at        DateTime?           @db.Timestamp(0)
+  client            client              @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "roles_client_id_foreign")
+  roles_permissions roles_permissions[]
+  users_roles       users_roles[]
+
+  @@index([client_id], map: "roles_client_id_foreign")
+}
+
+model roles_permissions {
+  id            BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  role_id       BigInt      @db.UnsignedBigInt
+  permission_id BigInt      @db.UnsignedBigInt
+  created_at    DateTime?   @db.Timestamp(0)
+  updated_at    DateTime?   @db.Timestamp(0)
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "roles_permissions_permission_id_foreign")
+  roles         roles       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "roles_permissions_role_id_foreign")
+
+  @@index([permission_id], map: "roles_permissions_permission_id_foreign")
+  @@index([role_id], map: "roles_permissions_role_id_foreign")
+}
+
+model sessions {
+  id            String  @unique(map: "sessions_id_unique")
+  user_id       BigInt? @db.UnsignedBigInt
+  ip_address    String? @db.VarChar(45)
+  user_agent    String? @db.Text
+  payload       String  @db.Text
+  last_activity Int
+}
+
+model statistics {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  chat_id     String    @db.VarChar(255)
+  card_id     BigInt    @db.UnsignedBigInt
+  card_text   String    @db.Text
+  user_answer String?   @db.Text
+  chatbot_id  BigInt    @db.UnsignedBigInt
+  created_at  DateTime? @db.Timestamp(0)
+  updated_at  DateTime? @db.Timestamp(0)
+}
+
+model step_form {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  name         String   @db.VarChar(256)
+  email        String   @db.VarChar(256)
+  phone_number String?  @db.VarChar(256)
+  country      String?  @db.VarChar(100)
+  domain       String   @db.VarChar(100)
+  client_id    BigInt   @db.UnsignedBigInt
+  created_at   DateTime @db.DateTime(0)
+  client       client   @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "step_form_client_id_foreign")
+
+  @@index([client_id], map: "step_form_client_id_foreign")
+}
+
+model user_data {
+  id                BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  client_id         BigInt    @db.UnsignedBigInt
+  week_leads        Int
+  week_deals        Int
+  first_lead_date   DateTime? @db.DateTime(0)
+  bitrix_plan       String    @db.VarChar(30)
+  employees_number  Int
+  email             String?   @db.VarChar(256)
+  name              String?   @db.VarChar(256)
+  last_name         String?   @db.VarChar(256)
+  personal_birthday String?   @db.VarChar(100)
+  personal_phone    String?   @db.VarChar(20)
+  personal_mobile   String?   @db.VarChar(20)
+  personal_street   String?   @db.VarChar(50)
+  personal_city     String?   @db.VarChar(50)
+  personal_state    String?   @db.VarChar(50)
+  personal_zip      String?   @db.VarChar(15)
+  personal_country  String?   @db.VarChar(25)
+  work_company      String?   @db.VarChar(50)
+  work_position     String?   @db.VarChar(50)
+  work_phone        String?   @db.VarChar(20)
+  updated_at        DateTime  @db.DateTime(0)
+  created_at        DateTime  @db.DateTime(0)
+  client            client    @relation(fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_data_client_id_foreign")
+
+  @@index([client_id], map: "user_data_client_id_foreign")
+}
+
+model users {
+  id              BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  bitrix_id       BigInt
+  email           String?
+  name            String?
+  second_name     String?
+  last_name       String?
+  domain          String?
+  is_bitrix_admin Boolean?
+  lang            String?       @db.VarChar(10)
+  client_id       BigInt        @db.UnsignedBigInt
+  show_help       Boolean       @default(true)
+  show_news       Boolean       @default(true)
+  created_at      DateTime?     @db.Timestamp(0)
+  updated_at      DateTime?     @db.Timestamp(0)
+  chatbot         chatbot[]
+  client          client        @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_client_id_foreign")
+  users_roles     users_roles[]
+
+  @@index([client_id], map: "users_client_id_foreign")
+}
+
+model users_bitrix_tokens {
+  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id       BigInt
+  domain        String    @db.Text
+  member_id     String    @db.Text
+  access_token  String    @db.Text
+  refresh_token String    @db.Text
+  created_at    DateTime? @db.Timestamp(0)
+  updated_at    DateTime? @db.Timestamp(0)
+}
+
+model users_roles {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id    BigInt    @db.UnsignedBigInt
+  role_id    BigInt    @db.UnsignedBigInt
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+  roles      roles     @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_role_id_foreign")
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_roles_user_id_foreign")
+
+  @@index([role_id], map: "users_roles_role_id_foreign")
+  @@index([user_id], map: "users_roles_user_id_foreign")
+}
+
+enum chatbot_send_to {
+  queue
+  responsible
+}
